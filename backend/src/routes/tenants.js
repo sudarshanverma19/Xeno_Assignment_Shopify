@@ -136,11 +136,17 @@ router.post('/login', async (req, res) => {
 
     res.json({
       success: true,
-      tenant,
+      payload: {
+        tenant: {
+          id: tenant.id,
+          shopUrl: tenant.shopUrl,
+          email: tenant.email,
+        },
+      },
     });
   } catch (error) {
     console.error('Error during login:', error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Login failed', details: error.message });
   }
 });
 
