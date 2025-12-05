@@ -1,0 +1,104 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Tenant {
+  id           String     @id @default(uuid())
+  shopUrl      String     @unique @map("shop_url")
+  accessToken  String     @map("access_token")
+  email        String?
+  isActive     Boolean    @default(true) @map("is_active")
+  createdAt    DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @updatedAt @map("updated_at")
+  
+  products     Product[]
+  customers    Customer[]
+  orders       Order[]
+  
+  @@map("tenants")
+}
+
+model Product {
+  id              String    @id
+  tenantId        String    @map("tenant_id")
+  title           String
+  bodyHtml        String?   @map("body_html")
+  vendor          String?
+  productType     String?   @map("product_type")
+  handle          String?
+  status          String?
+  publishedAt     DateTime? @map("published_at")
+  variantsCount   Int?      @map("variants_count")
+  price           Float?
+  compareAtPrice  Float?    @map("compare_at_price")
+  inventoryQuantity Int?    @map("inventory_quantity")
+  createdAt       DateTime  @map("created_at")
+  updatedAt       DateTime  @map("updated_at")
+  
+  tenant          Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  
+  @@map("products")
+  @@index([tenantId])
+}
+
+model Customer {
+  id                  String    @id
+  tenantId            String    @map("tenant_id")
+  email               String?
+  firstName           String?   @map("first_name")
+  lastName            String?   @map("last_name")
+  ordersCount         Int       @default(0) @map("orders_count")
+  totalSpent          Float     @default(0) @map("total_spent")
+  phone               String?
+  verifiedEmail       Boolean   @default(false) @map("verified_email")
+  state               String?
+  note                String?
+  currency            String?
+  createdAt           DateTime  @map("created_at")
+  updatedAt           DateTime  @map("updated_at")
+  
+  tenant              Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  orders              Order[]
+  
+  @@map("customers")
+  @@index([tenantId])
+  @@index([email])
+}
+
+model Order {
+  id                    String    @id
+  tenantId              String    @map("tenant_id")
+  customerId            String?   @map("customer_id")
+  email                 String?
+  orderNumber           Int       @map("order_number")
+  financialStatus       String?   @map("financial_status")
+  fulfillmentStatus     String?   @map("fulfillment_status")
+  totalPrice            Float     @map("total_price")
+  subtotalPrice         Float?    @map("subtotal_price")
+  totalTax              Float?    @map("total_tax")
+  totalDiscounts        Float?    @map("total_discounts")
+  currency              String?
+  lineItemsCount        Int?      @map("line_items_count")
+  totalWeight           Int?      @map("total_weight")
+  cancelledAt           DateTime? @map("cancelled_at")
+  closedAt              DateTime? @map("closed_at")
+  processedAt           DateTime? @map("processed_at")
+  createdAt             DateTime  @map("created_at")
+  updatedAt             DateTime  @map("updated_at")
+  
+  tenant                Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  customer              Customer? @relation(fields: [customerId], references: [id])
+  
+  @@map("orders")
+  @@index([tenantId])
+  @@index([customerId])
+  @@index([createdAt])
+}
