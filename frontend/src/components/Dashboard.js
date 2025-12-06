@@ -25,7 +25,7 @@ import {
 } from 'recharts';
 import './Dashboard.css';
 
-const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D', '#FFC658'];
+const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D', '#FFC658', '#ff7c7c'];
 
 function Dashboard({ tenant, onLogout }) {
   const [overview, setOverview] = useState(null);
@@ -37,7 +37,7 @@ function Dashboard({ tenant, onLogout }) {
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [error, setError] = useState('');
-  const [dateRange, setDateRange] = useState('30d');
+  const [dateRange, setDateRange] = useState('30');
 
   useEffect(() => {
     fetchData();
@@ -65,17 +65,22 @@ function Dashboard({ tenant, onLogout }) {
       ]);
 
       setOverview(overviewData);
-      setOrdersData(ordersChartData);
-      setTopCustomers(customersData);
-      setTopProducts(productsData);
-      setProductBreakdown(breakdownData);
-      setInventoryAlerts(alertsData);
+      setOrdersData(ordersChartData || []);
+      setTopCustomers(customersData || []);
+      setTopProducts(productsData || []);
+      setProductBreakdown(breakdownData || []);
+      setInventoryAlerts(alertsData || { lowStock: [], highStock: [] });
     } catch (err) {
       setError('Failed to fetch data. Please try again.');
       console.error('Error fetching data:', err);
     } finally {
       setLoading(false);
     }
+  };
+
+  const formatCustomerName = (firstName, lastName) => {
+    if (!firstName && !lastName) return 'Unknown';
+    return `${firstName || ''} ${lastName || ''}`.trim();
   };
 
   const handleSync = async () => {
@@ -111,9 +116,9 @@ function Dashboard({ tenant, onLogout }) {
   };
 
   const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('en-US', {
+    return new Intl.NumberFormat('en-IN', {
       style: 'currency',
-      currency: 'USD',
+      currency: 'INR',
     }).format(amount);
   };
 
@@ -182,7 +187,7 @@ function Dashboard({ tenant, onLogout }) {
       {/* Charts Section */}
       <div className="charts-container">
         {/* Orders Over Time Chart */}
-        <div className="chart-card">
+        <div className="chart-card full-width">
           <div className="chart-header">
             <h2>Orders Over Time</h2>
             <select
@@ -190,16 +195,16 @@ function Dashboard({ tenant, onLogout }) {
               value={dateRange}
               onChange={(e) => setDateRange(e.target.value)}
             >
-              <option value="7d">Last 7 Days</option>
-              <option value="30d">Last 30 Days</option>
-              <option value="90d">Last 90 Days</option>
+              <option value="7">Last 7 Days</option>
+              <option value="30">Last 30 Days</option>
+              <option value="90">Last 90 Days</option>
             </select>
           </div>
           <div className="chart-content">
             {ordersData.length > 0 ? (
-              <ResponsiveContainer width="100%" height={300}>
+              <ResponsiveContainer width="100%" height={350}>
                 <LineChart data={ordersData}>
-                  <CartesianGrid strokeDasharray="3 3" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
                   <XAxis
                     dataKey="date"
                     tick={{ fontSize: 12 }}
@@ -210,6 +215,12 @@ function Dashboard({ tenant, onLogout }) {
                   />
                   <YAxis tick={{ fontSize: 12 }} />
                   <Tooltip
+                    contentStyle={{
+                      backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                      border: '1px solid #ccc',
+                      borderRadius: '8px',
+                      padding: '10px',
+                    }}
                     formatter={(value, name) => {
                       if (name === 'revenue') {
                         return [formatCurrency(value), 'Revenue'];
@@ -222,15 +233,19 @@ function Dashboard({ tenant, onLogout }) {
                     type="monotone"
                     dataKey="orders"
                     stroke="#667eea"
-                    strokeWidth={2}
+                    strokeWidth={3}
                     name="Orders"
+                    dot={{ r: 5 }}
+                    activeDot={{ r: 7 }}
                   />
                   <Line
                     type="monotone"
                     dataKey="revenue"
                     stroke="#34d399"
-                    strokeWidth={2}
+                    strokeWidth={3}
                     name="Revenue"
+                    dot={{ r: 5 }}
+                    activeDot={{ r: 7 }}
                   />
                 </LineChart>
               </ResponsiveContainer>
@@ -247,9 +262,14 @@ function Dashboard({ tenant, onLogout }) {
           </div>
           <div className="chart-content">
             {topCustomers.length > 0 ? (
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={topCustomers}>
-                  <CartesianGrid strokeDasharray="3 3" />
+              <ResponsiveContainer width="100%" height={350}>
+                <BarChart 
+                  data={topCustomers.map((customer, index) => ({
+                    ...customer,
+                    fill: COLORS[index % COLORS.length]
+                  }))}
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
                   <XAxis
                     dataKey="name"
                     tick={{ fontSize: 12 }}
@@ -259,14 +279,24 @@ function Dashboard({ tenant, onLogout }) {
                   />
                   <YAxis tick={{ fontSize: 12 }} />
                   <Tooltip
+                    contentStyle={{
+                      backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                      border: '1px solid #ccc',
+                      borderRadius: '8px',
+                      padding: '10px',
+                    }}
                     formatter={(value) => formatCurrency(value)}
                   />
                   <Legend />
                   <Bar
                     dataKey="totalSpent"
-                    fill="#764ba2"
                     name="Total Spent"
-                  />
+                    radius={[8, 8, 0, 0]}
+                  >
+                    {topCustomers.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Bar>
                 </BarChart>
               </ResponsiveContainer>
             ) : (
@@ -282,24 +312,40 @@ function Dashboard({ tenant, onLogout }) {
           </div>
           <div className="chart-content">
             {topProducts.length > 0 ? (
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={topProducts}>
-                  <CartesianGrid strokeDasharray="3 3" />
+              <ResponsiveContainer width="100%" height={350}>
+                <BarChart 
+                  data={topProducts.map((product, index) => ({
+                    ...product,
+                    fill: COLORS[index % COLORS.length]
+                  }))}
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
                   <XAxis
                     dataKey="title"
-                    tick={{ fontSize: 12 }}
-                    angle={-15}
+                    tick={{ fontSize: 11 }}
+                    angle={-20}
                     textAnchor="end"
-                    height={80}
+                    height={90}
                   />
                   <YAxis tick={{ fontSize: 12 }} />
-                  <Tooltip />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                      border: '1px solid #ccc',
+                      borderRadius: '8px',
+                      padding: '10px',
+                    }}
+                  />
                   <Legend />
                   <Bar
                     dataKey="inventoryQuantity"
-                    fill="#f59e0b"
                     name="Stock Remaining"
-                  />
+                    radius={[8, 8, 0, 0]}
+                  >
+                    {topProducts.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Bar>
                 </BarChart>
               </ResponsiveContainer>
             ) : (
@@ -315,15 +361,15 @@ function Dashboard({ tenant, onLogout }) {
           </div>
           <div className="chart-content">
             {productBreakdown.length > 0 ? (
-              <ResponsiveContainer width="100%" height={300}>
+              <ResponsiveContainer width="100%" height={350}>
                 <PieChart>
                   <Pie
                     data={productBreakdown}
                     cx="50%"
                     cy="50%"
-                    labelLine={false}
-                    label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                    outerRadius={100}
+                    labelLine={true}
+                    label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(1)}%`}
+                    outerRadius={110}
                     fill="#8884d8"
                     dataKey="value"
                   >
@@ -331,7 +377,14 @@ function Dashboard({ tenant, onLogout }) {
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
                   </Pie>
-                  <Tooltip />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                      border: '1px solid #ccc',
+                      borderRadius: '8px',
+                      padding: '10px',
+                    }}
+                  />
                 </PieChart>
               </ResponsiveContainer>
             ) : (
@@ -351,20 +404,32 @@ function Dashboard({ tenant, onLogout }) {
                 {inventoryAlerts.lowStock.length > 0 && (
                   <div className="alert-section critical">
                     <h3>⚠️ Critical: Low Stock Alert</h3>
-                    <ResponsiveContainer width="100%" height={250}>
+                    <ResponsiveContainer width="100%" height={280}>
                       <BarChart data={inventoryAlerts.lowStock}>
-                        <CartesianGrid strokeDasharray="3 3" />
+                        <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
                         <XAxis
                           dataKey="name"
                           tick={{ fontSize: 11 }}
-                          angle={-15}
+                          angle={-20}
                           textAnchor="end"
-                          height={80}
+                          height={90}
                         />
                         <YAxis tick={{ fontSize: 12 }} />
-                        <Tooltip />
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                            border: '1px solid #ccc',
+                            borderRadius: '8px',
+                            padding: '10px',
+                          }}
+                        />
                         <Legend />
-                        <Bar dataKey="stock" fill="#ef4444" name="Stock Level" />
+                        <Bar 
+                          dataKey="stock" 
+                          fill="#ef4444" 
+                          name="Stock Level" 
+                          radius={[8, 8, 0, 0]}
+                        />
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
@@ -372,20 +437,32 @@ function Dashboard({ tenant, onLogout }) {
                 {inventoryAlerts.highStock.length > 0 && (
                   <div className="alert-section warning">
                     <h3>📦 Warning: Excess Stock</h3>
-                    <ResponsiveContainer width="100%" height={250}>
+                    <ResponsiveContainer width="100%" height={280}>
                       <BarChart data={inventoryAlerts.highStock}>
-                        <CartesianGrid strokeDasharray="3 3" />
+                        <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
                         <XAxis
                           dataKey="name"
                           tick={{ fontSize: 11 }}
-                          angle={-15}
+                          angle={-20}
                           textAnchor="end"
-                          height={80}
+                          height={90}
                         />
                         <YAxis tick={{ fontSize: 12 }} />
-                        <Tooltip />
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                            border: '1px solid #ccc',
+                            borderRadius: '8px',
+                            padding: '10px',
+                          }}
+                        />
                         <Legend />
-                        <Bar dataKey="stock" fill="#fbbf24" name="Stock Level" />
+                        <Bar 
+                          dataKey="stock" 
+                          fill="#fbbf24" 
+                          name="Stock Level" 
+                          radius={[8, 8, 0, 0]}
+                        />
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
