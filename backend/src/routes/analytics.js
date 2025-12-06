@@ -79,4 +79,61 @@ router.get('/products', async (req, res) => {
   }
 });
 
+// Get top performing products
+router.get('/top-products', async (req, res) => {
+  try {
+    const { tenantId, limit = '5' } = req.query;
+
+    if (!tenantId) {
+      return res.status(400).json({ error: 'tenantId is required' });
+    }
+
+    const analyticsService = new AnalyticsService(tenantId);
+    const products = await analyticsService.getTopPerformingProducts(parseInt(limit));
+
+    res.json(products);
+  } catch (error) {
+    console.error('Error fetching top products:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get product breakdown for pie chart
+router.get('/product-breakdown', async (req, res) => {
+  try {
+    const { tenantId } = req.query;
+
+    if (!tenantId) {
+      return res.status(400).json({ error: 'tenantId is required' });
+    }
+
+    const analyticsService = new AnalyticsService(tenantId);
+    const breakdown = await analyticsService.getProductBreakdown();
+
+    res.json(breakdown);
+  } catch (error) {
+    console.error('Error fetching product breakdown:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get inventory alerts
+router.get('/inventory-alerts', async (req, res) => {
+  try {
+    const { tenantId } = req.query;
+
+    if (!tenantId) {
+      return res.status(400).json({ error: 'tenantId is required' });
+    }
+
+    const analyticsService = new AnalyticsService(tenantId);
+    const alerts = await analyticsService.getInventoryAlerts();
+
+    res.json(alerts);
+  } catch (error) {
+    console.error('Error fetching inventory alerts:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 module.exports = router;

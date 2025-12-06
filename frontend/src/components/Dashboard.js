@@ -3,6 +3,9 @@ import {
   getOverview,
   getOrdersByDate,
   getTopCustomers,
+  getTopProducts,
+  getProductBreakdown,
+  getInventoryAlerts,
   syncAllData,
 } from '../services/api';
 import {
@@ -10,6 +13,9 @@ import {
   Line,
   BarChart,
   Bar,
+  PieChart,
+  Pie,
+  Cell,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -19,10 +25,15 @@ import {
 } from 'recharts';
 import './Dashboard.css';
 
+const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D', '#FFC658'];
+
 function Dashboard({ tenant, onLogout }) {
   const [overview, setOverview] = useState(null);
   const [ordersData, setOrdersData] = useState([]);
   const [topCustomers, setTopCustomers] = useState([]);
+  const [topProducts, setTopProducts] = useState([]);
+  const [productBreakdown, setProductBreakdown] = useState([]);
+  const [inventoryAlerts, setInventoryAlerts] = useState({ lowStock: [], highStock: [] });
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [error, setError] = useState('');
@@ -37,15 +48,28 @@ function Dashboard({ tenant, onLogout }) {
     setError('');
 
     try {
-      const [overviewData, ordersChartData, customersData] = await Promise.all([
+      const [
+        overviewData, 
+        ordersChartData, 
+        customersData, 
+        productsData, 
+        breakdownData,
+        alertsData
+      ] = await Promise.all([
         getOverview(tenant.id),
         getOrdersByDate(tenant.id, dateRange),
         getTopCustomers(tenant.id, 5),
+        getTopProducts(tenant.id, 5),
+        getProductBreakdown(tenant.id),
+        getInventoryAlerts(tenant.id),
       ]);
 
       setOverview(overviewData);
       setOrdersData(ordersChartData);
       setTopCustomers(customersData);
+      setTopProducts(productsData);
+      setProductBreakdown(breakdownData);
+      setInventoryAlerts(alertsData);
     } catch (err) {
       setError('Failed to fetch data. Please try again.');
       console.error('Error fetching data:', err);
@@ -247,6 +271,128 @@ function Dashboard({ tenant, onLogout }) {
               </ResponsiveContainer>
             ) : (
               <div className="no-data">No customer data available</div>
+            )}
+          </div>
+        </div>
+
+        {/* Top Performing Products */}
+        <div className="chart-card">
+          <div className="chart-header">
+            <h2>Top 5 Products (Lowest Stock)</h2>
+          </div>
+          <div className="chart-content">
+            {topProducts.length > 0 ? (
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={topProducts}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis
+                    dataKey="title"
+                    tick={{ fontSize: 12 }}
+                    angle={-15}
+                    textAnchor="end"
+                    height={80}
+                  />
+                  <YAxis tick={{ fontSize: 12 }} />
+                  <Tooltip />
+                  <Legend />
+                  <Bar
+                    dataKey="inventoryQuantity"
+                    fill="#f59e0b"
+                    name="Stock Remaining"
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="no-data">No product data available</div>
+            )}
+          </div>
+        </div>
+
+        {/* Product Breakdown Pie Chart */}
+        <div className="chart-card">
+          <div className="chart-header">
+            <h2>Product Inventory Breakdown</h2>
+          </div>
+          <div className="chart-content">
+            {productBreakdown.length > 0 ? (
+              <ResponsiveContainer width="100%" height={300}>
+                <PieChart>
+                  <Pie
+                    data={productBreakdown}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                    outerRadius={100}
+                    fill="#8884d8"
+                    dataKey="value"
+                  >
+                    {productBreakdown.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                </PieChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="no-data">No product breakdown available</div>
+            )}
+          </div>
+        </div>
+
+        {/* Inventory Alerts Histogram */}
+        <div className="chart-card full-width">
+          <div className="chart-header">
+            <h2>Inventory Alerts: Low Stock vs Excess Stock</h2>
+          </div>
+          <div className="chart-content">
+            {(inventoryAlerts.lowStock.length > 0 || inventoryAlerts.highStock.length > 0) ? (
+              <>
+                {inventoryAlerts.lowStock.length > 0 && (
+                  <div className="alert-section critical">
+                    <h3>⚠️ Critical: Low Stock Alert</h3>
+                    <ResponsiveContainer width="100%" height={250}>
+                      <BarChart data={inventoryAlerts.lowStock}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis
+                          dataKey="name"
+                          tick={{ fontSize: 11 }}
+                          angle={-15}
+                          textAnchor="end"
+                          height={80}
+                        />
+                        <YAxis tick={{ fontSize: 12 }} />
+                        <Tooltip />
+                        <Legend />
+                        <Bar dataKey="stock" fill="#ef4444" name="Stock Level" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                )}
+                {inventoryAlerts.highStock.length > 0 && (
+                  <div className="alert-section warning">
+                    <h3>📦 Warning: Excess Stock</h3>
+                    <ResponsiveContainer width="100%" height={250}>
+                      <BarChart data={inventoryAlerts.highStock}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis
+                          dataKey="name"
+                          tick={{ fontSize: 11 }}
+                          angle={-15}
+                          textAnchor="end"
+                          height={80}
+                        />
+                        <YAxis tick={{ fontSize: 12 }} />
+                        <Tooltip />
+                        <Legend />
+                        <Bar dataKey="stock" fill="#fbbf24" name="Stock Level" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="no-data">All inventory levels are optimal</div>
             )}
           </div>
         </div>

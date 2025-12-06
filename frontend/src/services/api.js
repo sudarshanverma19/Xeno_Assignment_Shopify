@@ -62,4 +62,19 @@ export const getProductStats = async (tenantId) => {
   return response.data;
 };
 
+export const getTopProducts = async (tenantId, limit = 5) => {
+  const response = await api.get(`/api/metrics/top-products?tenantId=${tenantId}&limit=${limit}`);
+  return response.data;
+};
+
+export const getProductBreakdown = async (tenantId) => {
+  const response = await api.get(`/api/metrics/product-breakdown?tenantId=${tenantId}`);
+  return response.data;
+};
+
+export const getInventoryAlerts = async (tenantId) => {
+  const response = await api.get(`/api/metrics/inventory-alerts?tenantId=${tenantId}`);
+  return response.data;
+};
+
 export default api;
