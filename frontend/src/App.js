@@ -5,11 +5,11 @@ import Dashboard from './components/Dashboard';
 import './App.css';
 
 function App() {
-  // Mock tenant data to bypass login
+  // Mock tenant data to bypass login - using actual tenant from database
   const mockTenant = {
-    id: 1,
-    shop_name: 'Demo Shop',
-    shop_url: 'demo-shop.myshopify.com'
+    id: '790c6565-6e54-480f-aaf4-f18c296786b1',
+    shopUrl: 'xeno-sudarshan-shop.myshopify.com',
+    email: 'admin@example.com'
   };
   
   const [tenant] = useState(mockTenant);
