@@ -5,54 +5,28 @@ import Dashboard from './components/Dashboard';
 import './App.css';
 
 function App() {
-  const [tenant, setTenant] = useState(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    // Check if tenant is stored in localStorage
-    const storedTenant = localStorage.getItem('tenant');
-    if (storedTenant) {
-      setTenant(JSON.parse(storedTenant));
-    }
-    setLoading(false);
-  }, []);
-
-  const handleLogin = (tenantData) => {
-    setTenant(tenantData);
-    localStorage.setItem('tenant', JSON.stringify(tenantData));
+  // Mock tenant data to bypass login
+  const mockTenant = {
+    id: 1,
+    shop_name: 'Demo Shop',
+    shop_url: 'demo-shop.myshopify.com'
   };
+  
+  const [tenant] = useState(mockTenant);
 
   const handleLogout = () => {
-    setTenant(null);
-    localStorage.removeItem('tenant');
+    // Logout functionality disabled
+    console.log('Logout disabled in demo mode');
   };
-
-  if (loading) {
-    return <div className="loading">Loading...</div>;
-  }
 
   return (
     <Router>
       <div className="App">
         <Routes>
           <Route
-            path="/login"
-            element={
-              tenant ? (
-                <Navigate to="/dashboard" replace />
-              ) : (
-                <Login onLogin={handleLogin} />
-              )
-            }
-          />
-          <Route
             path="/dashboard"
             element={
-              tenant ? (
-                <Dashboard tenant={tenant} onLogout={handleLogout} />
-              ) : (
-                <Navigate to="/login" replace />
-              )
+              <Dashboard tenant={tenant} onLogout={handleLogout} />
             }
           />
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
